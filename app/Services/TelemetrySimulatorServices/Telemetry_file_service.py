@@ -1,9 +1,9 @@
 # app/services/telemetry_files_service.py
 import os
 import aiofiles
-import aiofiles.os  # ייבוא תת-המודול לפעולות קבצים אסינכרוניות
+import aiofiles.os 
 from fastapi import UploadFile
-from app.Services.TelemetrySimulatorServices.Itelemetry_files_service import ITelemetryFilesService
+from app.Interfaces.Itelemetry_files_service import ITelemetryFilesService
 from app.Core.config import settings
 from app.ROSs.ReciveFileRos import *
 from app.Constants.ReciveFileMessages import *  

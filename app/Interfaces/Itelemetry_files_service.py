@@ -7,5 +7,6 @@ class ITelemetryFilesService(ABC):
     async def Recive_file(self, file: UploadFile) -> FileSuccessResponse | FileErrorResponse:
         pass
 
+    @abstractmethod
     async def Delete_file(self, file_name: str) -> FileSuccessResponse | FileErrorResponse:
         pass

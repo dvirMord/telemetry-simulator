@@ -1,9 +1,11 @@
 from fastapi import APIRouter, UploadFile, File, Depends
-from app.Services.TelemetrySimulatorServices.Itelemetry_files_service import ITelemetryFilesService
+from app.Interfaces.Itelemetry_files_service import ITelemetryFilesService
 from app.dependencies import get_telemetry_service
 from app.DTOs.DeleteFileDTO import DeleteFileDTO
+from app.Core.config import settings
+current_version = settings.CURRENT_VERSION
 router = APIRouter(
-    prefix="/api/v1.0/ts",
+    prefix=f"/api/{current_version}/ts",
     tags=["Telemetry files"]
 )
 
