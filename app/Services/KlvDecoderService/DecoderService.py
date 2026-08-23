@@ -16,6 +16,7 @@ class MisbDecoder(IMisbDecoder):
         # Generate the output file path using system settings and constants
         out_file_name = os.path.splitext(os.path.basename(file_name))[0] + ProgramConstants.ENCODED_FILE_ENDING
         out_path = os.path.join(settings.STORAGE_DECODED_PATH, out_file_name)
+        drone_id = os.path.splitext(os.path.basename(file_name))[0]
 
         # Open both files simultaneously: read binary from source, write text to destination
         with open(file_name, ProgramConstants.READ_BIN) as f, \

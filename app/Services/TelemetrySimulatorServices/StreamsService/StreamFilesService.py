@@ -94,7 +94,6 @@ class StreamFilesService(IStreamFilesService):
 
         try:
             partition = self._get_partition(file_name)
-            self._file_to_partition[file_name] = partition
 
             source_file_id = await self._db_manager.get_source_file_id(str(file_path))
             add_channel_dto = AddChannelDbDTO(
