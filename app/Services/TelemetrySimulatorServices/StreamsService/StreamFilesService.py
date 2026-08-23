@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Set
 
 import aiofiles
 
@@ -27,10 +27,21 @@ class StreamFilesService(IStreamFilesService):
     def __init__(self, kafka_producer: IKafkaProducerService):
         self._producer = kafka_producer
         self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._file_to_partition: Dict[str, int] = {}
         self._storage_path = Path(settings.STORAGE_DECODED_PATH)
 
-    async def _stream_file_worker(self, file_name: str, file_path: Path) -> None:
-        """Read file line by line and send each frame immediately to Kafka."""
+    def _get_free_partition(self, file_name: str) -> int:
+        """Find the lowest available partition index (0-9)."""
+        if file_name in self._file_to_partition:
+            return self._file_to_partition[file_name]
+        used_partitions: Set[int] = set(self._file_to_partition.values())
+        for partition_id in range(10):
+            if partition_id not in used_partitions:
+                return partition_id
+        raise RuntimeError("All 10 partitions are currently busy with active streams.")
+
+    async def _stream_file_worker(self, file_name: str, file_path: Path, partition: int) -> None:
+        """Read file line by line and route directly to the designated partition."""
         topic = settings.MAIN_TOPIC_NAME
 
         try:
@@ -40,17 +51,14 @@ class StreamFilesService(IStreamFilesService):
                     if not line:
                         continue
 
-                    # Parse single frame
                     frame_data = json.loads(line)
+                    drone_id = frame_data.get("server_drone_id", file_name)
 
-                    #ליאל אני אדבר איתך על זה כבר זה משהו ממש חשוב ובכנווה עשיתי את זה ככה 
-                    key = file_name
-
-                    # Send directly to Kafka
                     message = KafkaMessageDTO(
                         topic=topic,
                         value=frame_data,
-                        key=key,
+                        key=drone_id,
+                        partition=partition,
                     )
                     await self._producer.send_message(message)
 
@@ -66,7 +74,6 @@ class StreamFilesService(IStreamFilesService):
     async def start_stream_file(
         self, request: StartStreamDTO
     ) -> StartStreamSuccessResponse | StartStreamErrorResponse:
-        """Start streaming file frames in the background."""
         file_name = request.file_name
 
         if file_name in self._active_tasks:
@@ -81,12 +88,17 @@ class StreamFilesService(IStreamFilesService):
             )
 
         try:
-            task = asyncio.create_task(self._stream_file_worker(file_name, file_path))
+            partition = self._get_free_partition(file_name)
+            self._file_to_partition[file_name] = partition
+
+            task = asyncio.create_task(
+                self._stream_file_worker(file_name, file_path, partition)
+            )
             self._active_tasks[file_name] = task
 
             topic = settings.MAIN_TOPIC_NAME
             return StartStreamSuccessResponse(
-                message=StreamMessages.STREAM_STARTED.format(file_name, topic)
+                message=f"Stream started for '{file_name}' on dedicated partition {partition}."
             )
         except Exception as e:
             logger.error(f"Failed to start stream for file '{file_name}': {e}")
@@ -97,7 +109,6 @@ class StreamFilesService(IStreamFilesService):
     async def stop_stream_file(
         self, request: StopStreamDTO
     ) -> StopStreamSuccessResponse | StopStreamErrorResponse:
-        """Stop an active streaming task."""
         file_name = request.file_name
         task = self._active_tasks.get(file_name)
 
@@ -114,6 +125,7 @@ class StreamFilesService(IStreamFilesService):
                 pass
 
             self._active_tasks.pop(file_name, None)
+            self._file_to_partition.pop(file_name, None)
             return StopStreamSuccessResponse(
                 message=StreamMessages.STREAM_STOPPED.format(file_name)
             )

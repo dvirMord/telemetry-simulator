@@ -75,8 +75,7 @@ class KafkaProducerService(IKafkaProducerService):
 
         try:
             await self._producer.send_and_wait(
-                topic=message.topic, value=message.value, key=message.key
-            )
+                topic=message.topic, value=message.value, key=message.key, partition=message.partition)
         except Exception as e:
             logger.error(
                 KafkaMessages.MESSAGE_SEND_ERROR.format(
