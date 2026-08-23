@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Dict, Set
 
 import aiofiles
-
+from app.Interfaces.IDBManager import IDBManager
 from app.Constants.StreamMessages import StreamMessages
+from app.DTOs.DBDTOs import AddChannelDbDTO, FileType
 from app.Core.config import settings
 from app.DTOs.KafkaDTOs import KafkaMessageDTO
 from app.DTOs.StreamsDTOs import StartStreamDTO, StopStreamDTO
@@ -24,8 +25,9 @@ logger = logging.getLogger(__name__)
 
 class StreamFilesService(IStreamFilesService):
 
-    def __init__(self, kafka_producer: IKafkaProducerService):
+    def __init__(self, kafka_producer: IKafkaProducerService, db_manager: IDBManager):
         self._producer = kafka_producer
+        self._db_manager = db_manager
         self._active_tasks: Dict[str, asyncio.Task] = {}
         self._file_to_partition: Dict[str, int] = {}
         self._storage_path = Path(settings.STORAGE_DECODED_PATH)
@@ -73,33 +75,44 @@ class StreamFilesService(IStreamFilesService):
             self._active_tasks.pop(file_name, None)
             self._file_to_partition.pop(file_name, None)
 
-    async def start_stream_file(
-        self, request: StartStreamDTO
-    ) -> StartStreamSuccessResponse | StartStreamErrorResponse:
-        file_name = request.file_name
+    async def start_stream_file(self, request: StartStreamDTO) -> StartStreamSuccessResponse | StartStreamErrorResponse:
+            file_name = request.file_name
 
-        if file_name in self._active_tasks:
-            return StartStreamErrorResponse(
-                message=StreamMessages.STREAM_ALREADY_RUNNING.format(file_name)
-            )
+            if file_name in self._active_tasks:
+                return StartStreamErrorResponse(message=StreamMessages.STREAM_ALREADY_RUNNING.format(file_name))
 
-        file_path = self._storage_path / file_name
-        if not file_path.exists():
-            return StartStreamErrorResponse(
-                message=StreamMessages.FILE_NOT_FOUND.format(file_name)
-            )
+            file_path = self._storage_path / file_name
+            if not file_path.exists():
+                return StartStreamErrorResponse(
+                    message=StreamMessages.FILE_NOT_FOUND.format(file_name))
 
-        try:
-            partition = self._get_free_partition(file_name)
+            try:
+                partition = self._get_free_partition(file_name)
+                self._file_to_partition[file_name] = partition
+                #---- saving in db---------------------------------------------
+                source_file_id = await self._db_manager.get_source_file_id(str(file_path))
+                add_channel_dto = AddChannelDbDTO(
+                    source_file_id=source_file_id, 
+                    kafka_partition=partition, 
+                    file_type=FileType.DECODED
+                )
+                await self._db_manager.add_channel(add_channel_dto)
+                #--------------------------------------------------------------
+                task = asyncio.create_task(self._stream_file_worker(file_name, file_path, partition))
+                self._active_tasks[file_name] = task
 
-            task = asyncio.create_task(
-                self._stream_file_worker(file_name, file_path, partition)
-            )
-            self._active_tasks[file_name] = task
+                return StartStreamSuccessResponse(
+                    message=f"Stream started for '{file_name}' on dedicated partition {partition}.")
+            except Exception as e:
+                # במקרה של שגיאה - שחרור ה-partition
+                self._file_to_partition.pop(file_name, None)
+                logger.error(f"Failed to start stream for file '{file_name}': {e}")
+                return StartStreamErrorResponse(
+                    message=StreamMessages.INTERNAL_ERROR.format(str(e)))
 
             topic = settings.MAIN_TOPIC_NAME
             return StartStreamSuccessResponse(
-                message=StreamMessages.STREAM_SUCCES.format(file_name, partition)
+                message=f"Stream started for '{file_name}' on dedicated partition {partition}."
             )
         except Exception as e:
             logger.error(f"Failed to start stream for file '{file_name}': {e}")

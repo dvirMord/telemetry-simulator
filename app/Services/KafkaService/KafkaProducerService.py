@@ -12,13 +12,6 @@ from app.Constants.KafkaMessages import KafkaMessages
 MAX_PARTITOINS: int = 10
 # Configure stream handler to ensure console output
 logger = logging.getLogger(__name__)
-if not logger.handlers:
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    )
-    logger.addHandler(console_handler)
-    logger.setLevel(logging.INFO)
 
 
 class KafkaProducerService(IKafkaProducerService):
@@ -75,7 +68,11 @@ class KafkaProducerService(IKafkaProducerService):
 
         try:
             await self._producer.send_and_wait(
-                topic=message.topic, value=message.value, key=message.key, partition=message.partition)
+                topic=message.topic,
+                value=message.value,
+                key=message.key,
+                partition=message.partition,
+            )
         except Exception as e:
             logger.error(
                 KafkaMessages.MESSAGE_SEND_ERROR.format(

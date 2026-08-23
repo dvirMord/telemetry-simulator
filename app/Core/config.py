@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     MAIN_TOPIC_NAME:str
     DEFAULT_PARTITIONS_NUMBER:int
 
+    DB_PATH: str
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
