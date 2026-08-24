@@ -1,7 +1,7 @@
 import json
 import os
 import klvdata
-
+from typing import Any
 from app.Constants.Constants import ProgramConstants
 from app.Core.config import settings
 from app.Interfaces.IDecoderService import IMisbDecoder 
@@ -24,48 +24,26 @@ class MisbDecoder(IMisbDecoder):
                 
                 # Write to the JSONL file only if the packet was successfully parsed and is not empty
                 if packet_dict:
+                    # json.dumps converting the dict into json in the outputed file 
                     out.write(json.dumps(packet_dict, ensure_ascii=False) + "\n")
 
         return out_path
 
     def to_dict(self, packet) -> dict:
-        """
-        Safely converts a KLV packet to a dictionary.
-        Includes built-in protection against internal bugs in the klvdata library.
-        """
-        packet_dict = {}
-        
-        # klvdata stores packet fields in an 'items' attribute, which is an OrderedDict
-        items_dict = getattr(packet, "items", None)
-        
-        # Ensure the attribute exists and behaves like a dictionary
-        if isinstance(items_dict, dict):
-            for tag, item in items_dict.items():
-                
-                # 1. Safely extract the field name
-                try:
-                    name = getattr(item, 'name', str(tag))
-                except Exception:
-                    name = str(tag)
-                    
-                # 2. Safely extract the value (where the klvdata library often crashes)
-                val_str = ""
-                try:
-                    if hasattr(item, 'value'):
-                        val = item.value
-                    else:
-                        val = item
-                        
-                    # Handle raw bytes to prevent JSON serialization crashes
-                    if isinstance(val, bytes):
-                        val_str = val.hex()
-                    else:
-                        val_str = str(val)
-                        
-                except Exception as e:
-                    # Fallback string if the library throws an internal error (e.g., isinstance bug)
-                    val_str = f"<Unparseable Field: {e}>"
-                    
-                packet_dict[str(name)] = val_str
-                
-        return packet_dict
+        items = getattr(packet, "items", None)
+        if not isinstance(items, dict):
+            return {}
+
+        #---------------returing dict of: (tag: value, tag: value.....)
+        return dict(self._parse_item(tag, item) for tag, item in items.items())
+
+    def _parse_item(self, tag: Any, item: Any) -> tuple[str, str]:
+        """Parses a single KLV item into a safe (name, value) pair."""
+        name = str(getattr(item, "name", tag))
+        try:
+            val = getattr(item, "value", item)
+            val_str = val.hex() if isinstance(val, bytes) else str(val)
+        except Exception as e:
+            val_str = f"<Unparseable: {e}>"
+
+        return name, val_str

@@ -18,8 +18,8 @@ class TelemetryFilesService(ITelemetryFilesService):
     #----------files - Recive and save file----------------------------------------------------
     async def Recive_file(self, file: UploadFile) -> FileSuccessResponse | FileErrorResponse:
         if not self.is_extentsion_valid(file.filename):
-            msg = FilesControllerROsMessages.Error.EXTENTSION_NOT_VALID
-            return FileErrorResponse(message=FilesControllerROsMessages.Error.FILE_SAVE_FAILED_TEMPLATE.format(file.filename, msg))
+            uploadFIlePath  = FilesControllerROsMessages.Error.EXTENTSION_NOT_VALID
+            return FileErrorResponse(message=FilesControllerROsMessages.Error.FILE_SAVE_FAILED_TEMPLATE.format(file.filename, uploadFIlePath ))
         
         uploadFile = settings.STORAGE_PATH
 
