@@ -39,11 +39,11 @@ class MisbDecoder(IMisbDecoder):
 
     def _parse_item(self, tag: Any, item: Any) -> tuple[str, str]:
         """Parses a single KLV item into a safe (name, value) pair."""
-        name = str(getattr(item, "name", tag))
+        key = str(getattr(item, "name", tag))
         try:
             val = getattr(item, "value", item)
             val_str = val.hex() if isinstance(val, bytes) else str(val)
         except Exception as e:
             val_str = f"<Unparseable: {e}>"
 
-        return name, val_str
+        return key, val_str
