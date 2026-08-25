@@ -113,6 +113,16 @@ class StreamFilesService(IStreamFilesService):
                 message=StreamMessages.INTERNAL_ERROR.format(str(e))
             )
 
+            topic = settings.MAIN_TOPIC_NAME
+            return StartStreamSuccessResponse(
+                message=StreamMessages.STREAM_SUCCES.format(file_name, partition)
+            )
+        except Exception as e:
+            logger.error(f"Failed to start stream for file '{file_name}': {e}")
+            return StartStreamErrorResponse(
+                message=StreamMessages.INTERNAL_ERROR.format(str(e))
+            )
+
     async def stop_stream_file(
         self, request: StopStreamDTO
     ) -> StopStreamSuccessResponse | StopStreamErrorResponse:
