@@ -6,3 +6,8 @@ class StreamMessages:
     STREAM_ALREADY_RUNNING = "Stream for file '{0}' is already running."
     STREAM_NOT_FOUND = "No active stream found for file '{0}'."
     INTERNAL_ERROR = "An internal error occurred: {0}"
+    STREAM_SUCCES = "Stream started for '{0}' on dedicated partition {1}."
+    FAILD_TO_STOP_STREAM = "Failed to stop stream for file '{0}': {1}"
+    ALL_PARTITIONS_USED = "All 10 partitions are currently busy with active streams."
+    DRONE_ID_KEY = "server_drone_id"
+    ERROR_STREAMING = "Error while streaming file: "

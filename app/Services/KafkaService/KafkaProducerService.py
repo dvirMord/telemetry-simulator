@@ -9,6 +9,7 @@ from app.Core.config import settings
 from app.Constants.Constants import ProgramConstants
 from app.Constants.KafkaMessages import KafkaMessages
 
+MAX_PARTITOINS: int = 10
 # Configure stream handler to ensure console output
 logger = logging.getLogger(__name__)
 if not logger.handlers:
@@ -21,12 +22,11 @@ if not logger.handlers:
 
 
 class KafkaProducerService(IKafkaProducerService):
-
     def __init__(self, bootstrap_servers: Optional[str] = None):
         self._bootstrap_servers = bootstrap_servers or settings.KAFKA_BROKER_URL
         self._producer: Optional[AIOKafkaProducer] = None
 
-    async def _ensure_topic_exists(self, topic_name: str, num_partitions: int = 10) -> None:
+    async def _ensure_topic_exists(self, topic_name: str, num_partitions: int = MAX_PARTITOINS) -> None:
         """Create the topic with desired partitions if it does not exist."""
         admin_client = AIOKafkaAdminClient(bootstrap_servers=self._bootstrap_servers)
         try:
@@ -37,7 +37,7 @@ class KafkaProducerService(IKafkaProducerService):
                 await admin_client.create_topics([topic])
                 logger.info(KafkaMessages.TOPIC_CREATED_SUCCESS.format(topic_name, num_partitions))
         except Exception as e:
-            logger.warning(f"Topic auto-check skipped: {e}")
+            logger.warning(KafkaMessages.TOPIC_AUTO_SKIP,e)
         finally:
             await admin_client.close()
 

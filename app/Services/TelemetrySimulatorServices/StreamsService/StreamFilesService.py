@@ -37,8 +37,9 @@ class StreamFilesService(IStreamFilesService):
         used_partitions: Set[int] = set(self._file_to_partition.values())
         for partition_id in range(10):
             if partition_id not in used_partitions:
+                self._file_to_partition[file_name] = partition_id
                 return partition_id
-        raise RuntimeError("All 10 partitions are currently busy with active streams.")
+        raise RuntimeError(StreamMessages.ALL_PARTITIONS_USED)
 
     async def _stream_file_worker(self, file_name: str, file_path: Path, partition: int) -> None:
         """Read file line by line and route directly to the designated partition."""
@@ -52,7 +53,7 @@ class StreamFilesService(IStreamFilesService):
                         continue
 
                     frame_data = json.loads(line)
-                    drone_id = frame_data.get("server_drone_id", file_name)
+                    drone_id = frame_data.get(StreamMessages.DRONE_ID_KEY, file_name)
 
                     message = KafkaMessageDTO(
                         topic=topic,
@@ -67,9 +68,10 @@ class StreamFilesService(IStreamFilesService):
             logger.info(StreamMessages.STREAM_STOPPED.format(file_name))
             raise
         except Exception as e:
-            logger.error(f"Error while streaming file '{file_name}': {e}")
+            logger.error(StreamMessages.ERROR_STREAMING, file_name, e)
         finally:
             self._active_tasks.pop(file_name, None)
+            self._file_to_partition.pop(file_name, None)
 
     async def start_stream_file(
         self, request: StartStreamDTO
@@ -89,7 +91,6 @@ class StreamFilesService(IStreamFilesService):
 
         try:
             partition = self._get_free_partition(file_name)
-            self._file_to_partition[file_name] = partition
 
             task = asyncio.create_task(
                 self._stream_file_worker(file_name, file_path, partition)
@@ -98,7 +99,7 @@ class StreamFilesService(IStreamFilesService):
 
             topic = settings.MAIN_TOPIC_NAME
             return StartStreamSuccessResponse(
-                message=f"Stream started for '{file_name}' on dedicated partition {partition}."
+                message=StreamMessages.STREAM_SUCCES.format(file_name, partition)
             )
         except Exception as e:
             logger.error(f"Failed to start stream for file '{file_name}': {e}")
@@ -123,14 +124,11 @@ class StreamFilesService(IStreamFilesService):
                 await task
             except asyncio.CancelledError:
                 pass
-
-            self._active_tasks.pop(file_name, None)
-            self._file_to_partition.pop(file_name, None)
             return StopStreamSuccessResponse(
                 message=StreamMessages.STREAM_STOPPED.format(file_name)
             )
         except Exception as e:
-            logger.error(f"Failed to stop stream for file '{file_name}': {e}")
+            logger.error(StreamMessages.FAILD_TO_STOP_STREAM.format(file_name, e))
             return StopStreamErrorResponse(
                 message=StreamMessages.INTERNAL_ERROR.format(str(e))
             )

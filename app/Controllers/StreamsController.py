@@ -18,7 +18,6 @@ router = APIRouter( prefix=f"/api/{currnetVersion}/ts", tags=["Telemetry Stream"
     "/start",
     response_model=StartStreamSuccessResponse | StartStreamErrorResponse,
     status_code=status.HTTP_200_OK,
-    summary="Start streaming telemetry file to Kafka"
 )
 async def start_stream(
     request: StartStreamDTO,
@@ -30,9 +29,8 @@ async def start_stream(
 
 @router.post(
     "/stop",
-    response_model=StopStreamSuccessResponse | StopStreamErrorResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Stop streaming telemetry file"
+    response_model=StopStreamSuccessResponse | StopStreamErrorResponse, 
+    status_code=status.HTTP_200_OK
 )
 async def stop_stream(
     request: StopStreamDTO,

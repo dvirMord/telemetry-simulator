@@ -6,3 +6,4 @@ class KafkaMessages:
     MESSAGE_SEND_ERROR = "Error sending message to topic {0}: {1}"
     TOPIC_PARTITIONS_INFO = "Topic '{0}' is configured with partitions: {1}"
     TOPIC_CREATED_SUCCESS = "Kafka topic '{0}' created with {1} partitions."
+    TOPIC_AUTO_SKIP = "Topic auto-check skipped: %s"
