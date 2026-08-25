@@ -112,7 +112,7 @@ class StreamFilesService(IStreamFilesService):
 
             topic = settings.MAIN_TOPIC_NAME
             return StartStreamSuccessResponse(
-                message=f"Stream started for '{file_name}' on dedicated partition {partition}."
+                message=StreamMessages.STREAM_SUCCES.format(file_name, partition)
             )
         except Exception as e:
             logger.error(f"Failed to start stream for file '{file_name}': {e}")
