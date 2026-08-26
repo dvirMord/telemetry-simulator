@@ -7,9 +7,6 @@ from typing import Any
 from app.Constants.Constants import ProgramConstants
 from app.Core.config import settings
 from app.Interfaces.IDecoderService import IMisbDecoder 
-from app.Constants.Constants import KafkaConst
-
-
 class MisbDecoder(IMisbDecoder):
 
     def decode(self, file_name: str) -> Tuple[str, int]:
@@ -30,7 +27,7 @@ class MisbDecoder(IMisbDecoder):
                     # json.dumps converting the dict into json in the outputed file 
                     out.write(json.dumps(packet_dict, ensure_ascii=False) + "\n")
 
-        return out_path, os.path.getsize()
+        return out_path, os.path.getsize(out_path)
 
     def to_dict(self, packet) -> dict:
         items = getattr(packet, "items", None)

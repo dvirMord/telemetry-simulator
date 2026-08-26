@@ -76,18 +76,17 @@ class StreamFilesService(IStreamFilesService):
             logger.error(StreamMessages.ERROR_STREAMING, file_name, e)
         finally:
             self._active_tasks.pop(file_name, None)
-            self._file_to_partition.pop(file_name, None)
 
     async def start_stream_file(self, request: StartStreamDTO) -> StartStreamSuccessResponse | StartStreamErrorResponse:
-            file_name = request.file_name
+        file_name = request.file_name
 
-            if file_name in self._active_tasks:
-                return StartStreamErrorResponse(message=StreamMessages.STREAM_ALREADY_RUNNING.format(file_name))
+        if file_name in self._active_tasks:
+            return StartStreamErrorResponse(message=StreamMessages.STREAM_ALREADY_RUNNING.format(file_name))
 
-            file_path = self._storage_path / file_name
-            if not file_path.exists():
-                return StartStreamErrorResponse(
-                    message=StreamMessages.FILE_NOT_FOUND.format(file_name))
+        file_path = self._storage_path / file_name
+        if not file_path.exists():
+            return StartStreamErrorResponse(
+                message=StreamMessages.FILE_NOT_FOUND.format(file_name))
 
         try:
             partition = self._get_partition(file_name)
@@ -112,13 +111,8 @@ class StreamFilesService(IStreamFilesService):
             return StartStreamErrorResponse(
                 message=StreamMessages.INTERNAL_ERROR.format(str(e))
             )
-
-            topic = settings.MAIN_TOPIC_NAME
-            return StartStreamSuccessResponse(
-                message=StreamMessages.STREAM_SUCCES.format(file_name, partition)
-            )
         except Exception as e:
-            logger.error(f"Failed to start stream for file '{file_name}': {e}")
+            logger.error(StreamMessages.FAILD_TO_START.format(file_name, e)) 
             return StartStreamErrorResponse(
                 message=StreamMessages.INTERNAL_ERROR.format(str(e))
             )

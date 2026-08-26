@@ -52,3 +52,18 @@ class DbQueries:
         JOIN source_files s ON c.source_file_id = s.id
         ORDER BY c.created_at DESC;
     """
+class DbLogMessages:
+    # Errors & Exceptions
+    DB_NOT_OPEN = "Database connection is not open."
+    INIT_FAILED = "Failed to initialize SQLite database: {0}"
+    
+    # Connection Lifecycle
+    CONNECTION_ESTABLISHED = "SQLite database connection established successfully."
+    CONNECTION_CLOSED = "SQLite database connection closed gracefully."
+    
+    # Source Files
+    SOURCE_FILE_ADDED = "Source file added to database: {0}"
+    SOURCE_FILE_REMOVED = "Source file removed from database: {0}"
+    
+    # Channels
+    CHANNEL_REGISTERED = "Channel registered for source_file_id={0} on partition={1}"
