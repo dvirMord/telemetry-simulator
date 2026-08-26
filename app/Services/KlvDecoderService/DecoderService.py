@@ -2,14 +2,17 @@ import json
 import os
 import klvdata
 from typing import Any
+from typing import Tuple
+from typing import Any
 from app.Constants.Constants import ProgramConstants
 from app.Core.config import settings
 from app.Interfaces.IDecoderService import IMisbDecoder 
+from app.Constants.Constants import KafkaConst
 
 
 class MisbDecoder(IMisbDecoder):
 
-    def decode(self, file_name: str) -> str:
+    def decode(self, file_name: str) -> Tuple[str, int]:
         # Generate the output file path using system settings and constants
         out_file_name = os.path.splitext(os.path.basename(file_name))[0] + ProgramConstants.ENCODED_FILE_ENDING
         out_path = os.path.join(settings.STORAGE_DECODED_PATH, out_file_name)
@@ -27,7 +30,7 @@ class MisbDecoder(IMisbDecoder):
                     # json.dumps converting the dict into json in the outputed file 
                     out.write(json.dumps(packet_dict, ensure_ascii=False) + "\n")
 
-        return out_path
+        return out_path, os.path.getsize()
 
     def to_dict(self, packet) -> dict:
         items = getattr(packet, "items", None)

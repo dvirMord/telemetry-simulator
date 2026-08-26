@@ -9,11 +9,15 @@ from app.ROSs.ReciveFileRos import *
 from app.Constants.ReciveFileMessages import *  
 from app.Constants.Constants import ProgramConstants
 from app.Interfaces.IDecoderService import IMisbDecoder
+from app.Interfaces.IDBManager import IDBManager
+from app.DTOs.DBDTOs import AddFileDbDTO, AddChannelDbDTO, RemoveFileDbDTO
+from app.DTOs.DBDTOs import FileType
 import asyncio
 
 class TelemetryFilesService(ITelemetryFilesService):
-    def __init__(self, decoder: IMisbDecoder):
+    def __init__(self, decoder: IMisbDecoder, dbManager: IDBManager):
         self.decoder = decoder
+        self._db_service = dbManager
 
     #----------files - Recive and save file----------------------------------------------------
     async def Recive_file(self, file: UploadFile) -> FileSuccessResponse | FileErrorResponse:
@@ -30,7 +34,15 @@ class TelemetryFilesService(ITelemetryFilesService):
             async with aiofiles.open(file_path, ProgramConstants.WRITE_BIN) as dst_file:
                 while content := await file.read(ProgramConstants.READ_CHUNK_SIZE): 
                     await dst_file.write(content)
-                await asyncio.to_thread(self.decoder.decode, file_path)
+                #------decoding the bin file-----------------------------
+                decode_path, decoded_size = await asyncio.to_thread(self.decoder.decode, file_path)
+                #--------------------------------------------------------
+
+                #----------db objs-------------------------------
+                bin_bd_obj: AddFileDbDTO = AddFileDbDTO(path=file_path, size=file.size, file_type=FileType.BIN)
+                decode_db_obj: AddFileDbDTO = AddFileDbDTO(path=decode_path, size=decoded_size, file_type=FileType.DECODED)
+                await self._db_service.add_source_file(bin_bd_obj)
+                await self._db_service.add_source_file(decode_db_obj)
             return FileSuccessResponse(message=FilesControllerROsMessages.Success.FILE_RECEIVE_AND_SAVE.format(file.filename))
         
         except Exception as e:
@@ -53,12 +65,20 @@ class TelemetryFilesService(ITelemetryFilesService):
             if not os.path.exists(file_path):
                 return FileErrorResponse(
                     message=FilesControllerROsMessages.Error.FILE_DELETE_FAILED_TEMPLATE.format(
-                        file_name, ProgramConstants.FILE_NOT_EXISTS
-                    )
-                )
+                        file_name, ProgramConstants.FILE_NOT_EXISTS))
             
             await aiofiles.os.remove(file_path)
+            #---- decoded file name-----------------------------------------------------
+            decoded_name = file_name.split('.')[0] + ProgramConstants.ENCODED_FILE_ENDING
+            decoded_path = os.path.join(settings.STORAGE_DECODED_PATH, decoded_name) 
+            #--------------end----------------------------------------------------------
 
+            #---------delete from db------------------------------------------
+            bin_file_db_dto: RemoveFileDbDTO = RemoveFileDbDTO(path=file_path)
+            decoded_file_db_dto: RemoveFileDbDTO = RemoveFileDbDTO(path=decoded_path)
+            await self._db_service.remove_source_file(bin_file_db_dto)
+            await self._db_service.remove_source_file(decoded_file_db_dto)
+            #-------------end-------------------------------------------------
             return FileSuccessResponse(
                 message=FilesControllerROsMessages.Success.DELETE_SUCCESS_TEMPLATE.format(file_name)
             ) 

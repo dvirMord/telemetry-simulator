@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-
+from typing import Tuple
 
 class IMisbDecoder(ABC):
     """Contract for decoding a KLV binary file into a .txt file of JSON lines."""
 
     @abstractmethod
-    def decode(self, file_name: str) -> str:
+    def decode(self, file_name: str) -> Tuple[str, int]:
         """Decode file_name and return the path of the written output file."""
         raise NotImplementedError
 

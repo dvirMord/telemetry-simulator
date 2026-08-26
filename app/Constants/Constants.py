@@ -13,3 +13,7 @@ class FastConf:
     TITLE = "Telemetry Simulator API""API for receiving and managing telemetry files"
     DESCRIPTION = "Telemetry Simulator API""API for receiving and managing telemetry files"
     VALID_EXTENSION = ".bin"
+
+class KafkaConst:
+    MAX_PARTITIONS = 10
+    NEW_DRONE_PARAM ="server_drone_id"
