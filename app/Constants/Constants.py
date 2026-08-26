@@ -15,4 +15,5 @@ class FastConf:
     VALID_EXTENSION = ".bin"
 
 class KafkaConst:
+    MAX_PARTITIONS = 10
     NEW_DRONE_PARAM ="server_drone_id"

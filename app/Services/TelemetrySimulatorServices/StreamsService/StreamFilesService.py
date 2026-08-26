@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Dict, Set
 
 import aiofiles
-from app.Interfaces.IDBManager import IDBManager
 from app.Constants.StreamMessages import StreamMessages
-from app.DTOs.DBDTOs import AddChannelDbDTO, FileType
+from app.Constants.Constants import KafkaConst
 from app.Core.config import settings
+from app.DTOs.DBDTOs import AddChannelDbDTO, FileType
 from app.DTOs.KafkaDTOs import KafkaMessageDTO
 from app.DTOs.StreamsDTOs import StartStreamDTO, StopStreamDTO
+from app.Interfaces.IDBManager import IDBManager
 from app.Interfaces.IKafkaProducerService import IKafkaProducerService
 from app.Interfaces.IStreamFilesService import IStreamFilesService
 from app.ROSs.StreamsROs import (
@@ -32,12 +33,12 @@ class StreamFilesService(IStreamFilesService):
         self._file_to_partition: Dict[str, int] = {}
         self._storage_path = Path(settings.STORAGE_DECODED_PATH)
 
-    def _get_free_partition(self, file_name: str) -> int:
+    def _get_partition(self, file_name: str) -> int:
         """Find the lowest available partition index (0-9)."""
         if file_name in self._file_to_partition:
             return self._file_to_partition[file_name]
         used_partitions: Set[int] = set(self._file_to_partition.values())
-        for partition_id in range(10):
+        for partition_id in range(KafkaConst.MAX_PARTITIONS):
             if partition_id not in used_partitions:
                 self._file_to_partition[file_name] = partition_id
                 return partition_id
@@ -75,47 +76,43 @@ class StreamFilesService(IStreamFilesService):
             self._active_tasks.pop(file_name, None)
             self._file_to_partition.pop(file_name, None)
 
-    async def start_stream_file(self, request: StartStreamDTO) -> StartStreamSuccessResponse | StartStreamErrorResponse:
-            file_name = request.file_name
+    async def start_stream_file(
+        self, request: StartStreamDTO
+    ) -> StartStreamSuccessResponse | StartStreamErrorResponse:
+        file_name = request.file_name
 
-            if file_name in self._active_tasks:
-                return StartStreamErrorResponse(message=StreamMessages.STREAM_ALREADY_RUNNING.format(file_name))
+        if file_name in self._active_tasks:
+            return StartStreamErrorResponse(
+                message=StreamMessages.STREAM_ALREADY_RUNNING.format(file_name)
+            )
 
-            file_path = self._storage_path / file_name
-            if not file_path.exists():
-                return StartStreamErrorResponse(
-                    message=StreamMessages.FILE_NOT_FOUND.format(file_name))
+        file_path = self._storage_path / file_name
+        if not file_path.exists():
+            return StartStreamErrorResponse(
+                message=StreamMessages.FILE_NOT_FOUND.format(file_name)
+            )
 
-            try:
-                partition = self._get_free_partition(file_name)
-                self._file_to_partition[file_name] = partition
-                #---- saving in db---------------------------------------------
-                source_file_id = await self._db_manager.get_source_file_id(str(file_path))
-                add_channel_dto = AddChannelDbDTO(
-                    source_file_id=source_file_id, 
-                    kafka_partition=partition, 
-                    file_type=FileType.DECODED
-                )
-                await self._db_manager.add_channel(add_channel_dto)
-                #--------------------------------------------------------------
-                task = asyncio.create_task(self._stream_file_worker(file_name, file_path, partition))
-                self._active_tasks[file_name] = task
+        try:
+            partition = self._get_partition(file_name)
+            self._file_to_partition[file_name] = partition
 
-                return StartStreamSuccessResponse(
-                    message=f"Stream started for '{file_name}' on dedicated partition {partition}.")
-            except Exception as e:
-                # במקרה של שגיאה - שחרור ה-partition
-                self._file_to_partition.pop(file_name, None)
-                logger.error(f"Failed to start stream for file '{file_name}': {e}")
-                return StartStreamErrorResponse(
-                    message=StreamMessages.INTERNAL_ERROR.format(str(e)))
+            source_file_id = await self._db_manager.get_source_file_id(str(file_path))
+            add_channel_dto = AddChannelDbDTO(
+                source_file_id=source_file_id,
+                kafka_partition=partition,
+                file_type=FileType.DECODED,
+            )
+            await self._db_manager.add_channel(add_channel_dto)
 
-            topic = settings.MAIN_TOPIC_NAME
+            task = asyncio.create_task(self._stream_file_worker(file_name, file_path, partition))
+            self._active_tasks[file_name] = task
+
             return StartStreamSuccessResponse(
                 message=StreamMessages.STREAM_SUCCES.format(file_name, partition)
             )
         except Exception as e:
-            logger.error(f"Failed to start stream for file '{file_name}': {e}")
+            self._file_to_partition.pop(file_name, None)
+            logger.error(StreamMessages.FAILD_TO_START.format(file_name, e))
             return StartStreamErrorResponse(
                 message=StreamMessages.INTERNAL_ERROR.format(str(e))
             )
