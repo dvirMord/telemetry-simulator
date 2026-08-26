@@ -8,7 +8,6 @@ import logging
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.Core.logger import setup_logger
-# מפעילים את הלוגר המרכזי פעם אחת
 setup_logger()
 
 logger = logging.getLogger(__name__)
