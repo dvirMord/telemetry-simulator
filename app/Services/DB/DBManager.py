@@ -43,7 +43,7 @@ class DBManager(IDBManager[AddFileDbDTO, AddChannelDbDTO]):
     # -------------------------------------------------------
 
     # ---------For files storage-----------------------------
-    async def add_source_file(self, request: AddFileDbDTO) -> None:
+    async def add_source_file(self, request: AddFileDbDTO) -> int:
         if not self._db_connection:
             raise RuntimeError(DbLogMessages.DB_NOT_OPEN)
 
@@ -56,9 +56,10 @@ class DBManager(IDBManager[AddFileDbDTO, AddChannelDbDTO]):
         async with self._db_connection.execute(
             DbQueries.INSERT_SOURCE_FILE,
             (request.path, file_type_val, request.size),
-        ):
+        ) as cursor:
             await self._db_connection.commit()
             logger.info(DbLogMessages.SOURCE_FILE_ADDED.format(request.path))
+            return cursor.lastrowid
 
     async def remove_source_file(self, request: RemoveFileDbDTO) -> None:
         if not self._db_connection:

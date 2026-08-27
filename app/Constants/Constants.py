@@ -13,6 +13,8 @@ class FastConf:
     TITLE = "Telemetry Simulator API""API for receiving and managing telemetry files"
     DESCRIPTION = "Telemetry Simulator API""API for receiving and managing telemetry files"
     VALID_EXTENSION = ".bin"
+    APP_URL = "/api/{0}/ts"
+    APP_TAG = "Telemetry Stream"
 
 class KafkaConst:
     MAX_PARTITIONS = 10

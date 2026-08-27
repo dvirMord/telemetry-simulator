@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, TypeVar, Generic
+from typing import Any, Dict, Generic, List, TypeVar  # noqa: UP035
 
 T_File = TypeVar("T_File")
 T_Channel = TypeVar("T_Channel")

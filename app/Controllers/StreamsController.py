@@ -9,9 +9,10 @@ from app.ROSs.StreamsROs import (
 )
 from app.dependencies import get_stream_files_service
 from app.Core.config import settings
+from app.Constants.Constants import FastConf 
 
 currnetVersion = settings.CURRENT_VERSION
-router = APIRouter( prefix=f"/api/{currnetVersion}/ts", tags=["Telemetry Stream"])
+router = APIRouter( prefix=FastConf.APP_URL.format(currnetVersion), tags=[FastConf.APP_TAG])
 
 
 @router.post(

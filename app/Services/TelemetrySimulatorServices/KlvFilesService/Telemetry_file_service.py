@@ -1,18 +1,20 @@
 # app/services/telemetry_files_service.py
-import os
-import aiofiles
-import aiofiles.os 
-from fastapi import UploadFile
-from app.Interfaces.Itelemetry_files_service import ITelemetryFilesService
-from app.Core.config import settings
-from app.ROSs.ReciveFileRos import *
-from app.Constants.ReciveFileMessages import *  
-from app.Constants.Constants import ProgramConstants
-from app.Interfaces.IDecoderService import IMisbDecoder
-from app.Interfaces.IDBManager import IDBManager
-from app.DTOs.DBDTOs import AddFileDbDTO, AddChannelDbDTO, RemoveFileDbDTO
-from app.DTOs.DBDTOs import FileType
 import asyncio
+import os
+
+import aiofiles
+import aiofiles.os
+from fastapi import UploadFile
+
+from app.Constants.Constants import ProgramConstants
+from app.Constants.ReciveFileMessages import *
+from app.Core.config import settings
+from app.DTOs.DBDTOs import AddFileDbDTO, FileType, RemoveFileDbDTO
+from app.Interfaces.IDBManager import IDBManager
+from app.Interfaces.IDecoderService import IMisbDecoder
+from app.Interfaces.Itelemetry_files_service import ITelemetryFilesService
+from app.ROSs.ReciveFileRos import *
+
 
 class TelemetryFilesService(ITelemetryFilesService):
     def __init__(self, decoder: IMisbDecoder, dbManager: IDBManager):
@@ -41,11 +43,11 @@ class TelemetryFilesService(ITelemetryFilesService):
                 #----------db objs-------------------------------
                 bin_bd_obj: AddFileDbDTO = AddFileDbDTO(path=file_path, size=file.size, file_type=FileType.BIN)
                 decode_db_obj: AddFileDbDTO = AddFileDbDTO(path=decode_path, size=decoded_size, file_type=FileType.DECODED)
-                await self._db_service.add_source_file(bin_bd_obj)
-                await self._db_service.add_source_file(decode_db_obj)
-            return FileSuccessResponse(message=FilesControllerROsMessages.Success.FILE_RECEIVE_AND_SAVE.format(file.filename))
+                source_id_bin = await self._db_service.add_source_file(bin_bd_obj)
+                source_id_decoded = await self._db_service.add_source_file(decode_db_obj)
+            return FileSuccessUploadResponse(message=FilesControllerROsMessages.Success.FILE_RECEIVE_AND_SAVE.format(file.filename), decodedId=source_id_decoded)
         
-        except Exception as e:
+        except Exception as e:   
             return FileErrorResponse(message=FilesControllerROsMessages.Error.FILE_SAVE_FAILED_TEMPLATE.format(file.filename, e))
 
         finally:
@@ -82,7 +84,7 @@ class TelemetryFilesService(ITelemetryFilesService):
             return FileSuccessResponse(
                 message=FilesControllerROsMessages.Success.DELETE_SUCCESS_TEMPLATE.format(file_name)
             ) 
-        except Exception as e:
+        except Exception as e:   
             return FileErrorResponse(
                 message=FilesControllerROsMessages.Error.FILE_DELETE_FAILED_TEMPLATE.format(file_name, e)
             )
