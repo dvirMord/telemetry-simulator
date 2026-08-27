@@ -47,7 +47,7 @@ class TelemetryFilesService(ITelemetryFilesService):
                 source_id_decoded = await self._db_service.add_source_file(decode_db_obj)
             return FileSuccessUploadResponse(message=FilesControllerROsMessages.Success.FILE_RECEIVE_AND_SAVE.format(file.filename), decodedId=source_id_decoded)
         
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:   
             return FileErrorResponse(message=FilesControllerROsMessages.Error.FILE_SAVE_FAILED_TEMPLATE.format(file.filename, e))
 
         finally:
@@ -84,7 +84,7 @@ class TelemetryFilesService(ITelemetryFilesService):
             return FileSuccessResponse(
                 message=FilesControllerROsMessages.Success.DELETE_SUCCESS_TEMPLATE.format(file_name)
             ) 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:   
             return FileErrorResponse(
                 message=FilesControllerROsMessages.Error.FILE_DELETE_FAILED_TEMPLATE.format(file_name, e)
             )
