@@ -4,7 +4,7 @@ import aiosqlite
 from typing import Optional, List, Dict, Any
 from app.Interfaces.IDBManager import IDBManager
 from app.DTOs.DBDTOs import AddFileDbDTO, AddChannelDbDTO, RemoveFileDbDTO
-from app.Constants.DbConstants import InitScript, DbQueries, DbLogMessages
+from app.Constants.DbConstants import InitScript, DbQueries, DbLogMessages, Constants
 from app.Core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -71,6 +71,21 @@ class DBManager(IDBManager[AddFileDbDTO, AddChannelDbDTO]):
     # -------------------------------------------------------
 
     # ---------For streams connections----------------------
+
+    async def get_source_file_path_by_id(self, sim_id: int) -> Optional[str]:
+        if not self._db_connection:
+            raise RuntimeError(DbLogMessages.DB_NOT_OPEN)
+
+        async with self._db_connection.execute(
+            DbQueries.GET_SOURCE_FILE_PATH_BY_ID, 
+            (sim_id,)
+        ) as cursor:
+            answer = await cursor.fetchone()
+            if answer and answer[Constants.path]:
+                return os.path.basename(answer[Constants.path])
+            return None
+        
+    
     async def add_channel(self, request: AddChannelDbDTO) -> None:
         if not self._db_connection:
             raise RuntimeError(DbLogMessages.DB_NOT_OPEN)

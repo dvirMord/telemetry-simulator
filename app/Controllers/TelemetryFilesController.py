@@ -21,5 +21,5 @@ async def recive_klv_file(file: UploadFile = File(...), files_service: ITelemetr
 #-----------------delete file from the service-------------------
 @router.delete("/files", status_code=status.HTTP_200_OK)
 async def delete_klv_file(dto: DeleteFileDTO, files_service: ITelemetryFilesService = Depends(get_telemetry_files_service)):   
-    return await files_service.Delete_file(dto.file_name)
+    return await files_service.Delete_file(dto.sim_id)
 #------------------end---------------------------------------
