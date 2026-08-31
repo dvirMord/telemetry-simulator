@@ -80,11 +80,10 @@ class StreamFilesService(IStreamFilesService):
     ) -> StartStreamSuccessResponse | StartStreamErrorResponse:
         sim_id = request.sim_id
 
-        # 1. שליפת שם הקובץ מה-DB לפי ה-ID
         file_name = await self._db_manager.get_source_file_path_by_id(sim_id)
         if not file_name:
             return StartStreamErrorResponse(
-                message=f"Source file with SimId {sim_id} was not found in database."
+                message=StreamMessages.STREAM_NOT_FOUND_IN_DB.format(StartStreamDTO.sim_id)
             )
 
         if file_name in self._active_tasks:
@@ -101,7 +100,6 @@ class StreamFilesService(IStreamFilesService):
         try:
             partition = self._get_partition(file_name)
 
-            # שמירת הערוץ ב-DB עם ה-sim_id שכבר יש לנו
             add_channel_dto = AddChannelDbDTO(
                 source_file_id=sim_id,
                 kafka_partition=partition,
@@ -129,11 +127,10 @@ class StreamFilesService(IStreamFilesService):
     ) -> StopStreamSuccessResponse | StopStreamErrorResponse:
         sim_id = request.sim_id
 
-        # 1. שליפת שם הקובץ מה-DB לפי ה-ID לצורך איתור ה-Task הפעיל
         file_name = await self._db_manager.get_source_file_path_by_id(sim_id)
         if not file_name:
             return StopStreamErrorResponse(
-                message=f"Source file with SimId {sim_id} was not found in database."
+                message=StreamMessages.STREAM_NOT_FOUND_IN_DB.format(StopStreamDTO.sim_id)
             )
 
         task = self._active_tasks.get(file_name)
