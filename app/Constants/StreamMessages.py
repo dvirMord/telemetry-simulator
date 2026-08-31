@@ -12,3 +12,4 @@ class StreamMessages:
     DRONE_ID_KEY = "server_drone_id"
     ERROR_STREAMING = "Error while streaming file: "
     FAILD_TO_START = "Failed to start stream for file '{0}': {1}"
+    STREAM_NOT_FOUND_IN_DB = "Source file with SimId {0} was not found in database."

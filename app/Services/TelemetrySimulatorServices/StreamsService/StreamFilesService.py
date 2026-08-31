@@ -5,10 +5,8 @@ from pathlib import Path
 from typing import Dict, Set
 
 import aiofiles
-from app.Interfaces.IDBManager import IDBManager
-from app.Constants.StreamMessages import StreamMessages
-from app.DTOs.DBDTOs import AddChannelDbDTO, FileType
 from app.Constants.Constants import KafkaConst
+from app.Constants.StreamMessages import StreamMessages
 from app.Core.config import settings
 from app.DTOs.DBDTOs import AddChannelDbDTO, FileType
 from app.DTOs.KafkaDTOs import KafkaMessageDTO
@@ -77,29 +75,41 @@ class StreamFilesService(IStreamFilesService):
         finally:
             self._active_tasks.pop(file_name, None)
 
-    async def start_stream_file(self, request: StartStreamDTO) -> StartStreamSuccessResponse | StartStreamErrorResponse:
-        file_name = request.file_name
+    async def start_stream_file(
+        self, request: StartStreamDTO
+    ) -> StartStreamSuccessResponse | StartStreamErrorResponse:
+        sim_id = request.sim_id
+
+        file_name = await self._db_manager.get_source_file_path_by_id(sim_id)
+        if not file_name:
+            return StartStreamErrorResponse(
+                message=StreamMessages.STREAM_NOT_FOUND_IN_DB.format(StartStreamDTO.sim_id)
+            )
 
         if file_name in self._active_tasks:
-            return StartStreamErrorResponse(message=StreamMessages.STREAM_ALREADY_RUNNING.format(file_name))
+            return StartStreamErrorResponse(
+                message=StreamMessages.STREAM_ALREADY_RUNNING.format(file_name)
+            )
 
         file_path = self._storage_path / file_name
         if not file_path.exists():
             return StartStreamErrorResponse(
-                message=StreamMessages.FILE_NOT_FOUND.format(file_name))
+                message=StreamMessages.FILE_NOT_FOUND.format(file_name)
+            )
 
         try:
             partition = self._get_partition(file_name)
 
-            source_file_id = await self._db_manager.get_source_file_id(str(file_path))
             add_channel_dto = AddChannelDbDTO(
-                source_file_id=source_file_id,
+                source_file_id=sim_id,
                 kafka_partition=partition,
                 file_type=FileType.DECODED,
             )
             await self._db_manager.add_channel(add_channel_dto)
 
-            task = asyncio.create_task(self._stream_file_worker(file_name, file_path, partition))
+            task = asyncio.create_task(
+                self._stream_file_worker(file_name, file_path, partition)
+            )
             self._active_tasks[file_name] = task
 
             return StartStreamSuccessResponse(
@@ -111,16 +121,18 @@ class StreamFilesService(IStreamFilesService):
             return StartStreamErrorResponse(
                 message=StreamMessages.INTERNAL_ERROR.format(str(e))
             )
-        except Exception as e:
-            logger.error(StreamMessages.FAILD_TO_START.format(file_name, e)) 
-            return StartStreamErrorResponse(
-                message=StreamMessages.INTERNAL_ERROR.format(str(e))
-            )
 
     async def stop_stream_file(
         self, request: StopStreamDTO
     ) -> StopStreamSuccessResponse | StopStreamErrorResponse:
-        file_name = request.file_name
+        sim_id = request.sim_id
+
+        file_name = await self._db_manager.get_source_file_path_by_id(sim_id)
+        if not file_name:
+            return StopStreamErrorResponse(
+                message=StreamMessages.STREAM_NOT_FOUND_IN_DB.format(StopStreamDTO.sim_id)
+            )
+
         task = self._active_tasks.get(file_name)
 
         if not task or task.done():

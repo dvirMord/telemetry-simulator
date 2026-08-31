@@ -1,7 +1,15 @@
-from pydantic import BaseModel 
+from pydantic import BaseModel, Field
+
 
 class StartStreamDTO(BaseModel):
-    file_name: str = str(...)
+    sim_id: int = Field(..., alias="simId", gt=0)
+
+    class Config:
+        populate_by_name = True
+
 
 class StopStreamDTO(BaseModel):
-    file_name: str = str(...)
+    sim_id: int = Field(..., alias="simId", gt=0)
+
+    class Config:
+        populate_by_name = True

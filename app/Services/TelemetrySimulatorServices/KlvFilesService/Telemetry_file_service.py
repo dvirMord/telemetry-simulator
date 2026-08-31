@@ -4,6 +4,7 @@ import os
 
 import aiofiles
 import aiofiles.os
+import logging
 from fastapi import UploadFile
 
 from app.Constants.Constants import ProgramConstants
@@ -15,6 +16,7 @@ from app.Interfaces.IDecoderService import IMisbDecoder
 from app.Interfaces.Itelemetry_files_service import ITelemetryFilesService
 from app.ROSs.ReciveFileRos import *
 
+logger = logging.getLogger(__name__)
 
 class TelemetryFilesService(ITelemetryFilesService):
     def __init__(self, decoder: IMisbDecoder, dbManager: IDBManager):
@@ -56,39 +58,38 @@ class TelemetryFilesService(ITelemetryFilesService):
     #---------------------------end---------------------------------------------------
      
     #interface----------------delete file from the service------------------------------------------- 
-    async def Delete_file(self, file_name: str) -> FileSuccessResponse | FileErrorResponse:
-        if not self.is_extentsion_valid(file_name):
-            msg = FilesControllerROsMessages.Error.EXTENTSION_NOT_VALID
-            return FileErrorResponse(message=FilesControllerROsMessages.Error.FILE_SAVE_FAILED_TEMPLATE.format(file_name, msg))
-        
-        upload_dir = settings.STORAGE_PATH
-        file_path = os.path.join(upload_dir, file_name)
-        try:
-            if not os.path.exists(file_path):
-                return FileErrorResponse(
-                    message=FilesControllerROsMessages.Error.FILE_DELETE_FAILED_TEMPLATE.format(
-                        file_name, ProgramConstants.FILE_NOT_EXISTS))
-            
-            await aiofiles.os.remove(file_path)
-            #---- decoded file name-----------------------------------------------------
-            decoded_name = file_name.split('.')[0] + ProgramConstants.ENCODED_FILE_ENDING
-            decoded_path = os.path.join(settings.STORAGE_DECODED_PATH, decoded_name) 
-            #--------------end----------------------------------------------------------
-
-            #---------delete from db------------------------------------------
-            bin_file_db_dto: RemoveFileDbDTO = RemoveFileDbDTO(path=file_path)
-            decoded_file_db_dto: RemoveFileDbDTO = RemoveFileDbDTO(path=decoded_path)
-            await self._db_service.remove_source_file(bin_file_db_dto)
-            await self._db_service.remove_source_file(decoded_file_db_dto)
-            #-------------end-------------------------------------------------
-            return FileSuccessResponse(
-                message=FilesControllerROsMessages.Success.DELETE_SUCCESS_TEMPLATE.format(file_name)
-            ) 
-        except Exception as e:   
+    async def Delete_file(self, sim_id: int) -> FileSuccessResponse | FileErrorResponse:
+        decoded_file_name = await self._db_service.get_source_file_path_by_id(sim_id)
+        if not decoded_file_name:
             return FileErrorResponse(
-                message=FilesControllerROsMessages.Error.FILE_DELETE_FAILED_TEMPLATE.format(file_name, e)
+                message=FilesControllerROsMessages.Error.FILE_NOT_FOUND_BY_ID.format(sim_id)
             )
 
+        decoded_path = os.path.join(settings.STORAGE_DECODED_PATH, decoded_file_name)
+
+        base_name = decoded_file_name.replace(ProgramConstants.ENCODED_FILE_ENDING, "")
+        raw_file_name = f"{base_name}{FileExtensions.RAW_BIN_EXTENSION}"
+        raw_path = os.path.join(settings.STORAGE_PATH, raw_file_name)
+
+        try:
+            if os.path.exists(decoded_path):
+                await aiofiles.os.remove(decoded_path)
+
+            if os.path.exists(raw_path):
+                await aiofiles.os.remove(raw_path)
+
+            await self._db_service.remove_source_file(RemoveFileDbDTO(path=decoded_path))
+            await self._db_service.remove_source_file(RemoveFileDbDTO(path=raw_path))
+
+            return FileSuccessResponse(
+                message=FilesControllerROsMessages.Success.DELETE_SUCCESS_TEMPLATE.format(decoded_file_name)
+            )
+
+        except Exception as e:
+            logger.error(FilesLogMessages.DELETE_FILES_ERROR, sim_id, e)
+            return FileErrorResponse(
+                message=FilesControllerROsMessages.Error.FILE_DELETE_FAILED_TEMPLATE.format(decoded_file_name, str(e))
+            )
     #----------------end--------------------------------------------------------------------
 
     def is_extentsion_valid(self, input: str) -> bool:

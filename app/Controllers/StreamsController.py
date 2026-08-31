@@ -25,6 +25,8 @@ async def start_stream(
     stream_service: IStreamFilesService = Depends(get_stream_files_service),
 ):
     """Start reading and publishing telemetry file frames to Kafka."""
+
+    
     return await stream_service.start_stream_file(request)
 
 
