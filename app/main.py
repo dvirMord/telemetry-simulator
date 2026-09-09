@@ -1,13 +1,15 @@
 import sys
 import os
+import logging
 from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI
-import logging
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.Core.logger import setup_logger
+
 setup_logger()
 
 logger = logging.getLogger(__name__)
@@ -21,25 +23,39 @@ from app.dependencies import get_kafka_producer, get_db_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    db_manager = get_db_manager()
+    kafka_producer = get_kafka_producer()
+
     # ------------------ STARTUP ------------------
     try:
-        db_manager = get_db_manager()
         await db_manager.start_connection()
-
-        kafka_producer = get_kafka_producer()
         await kafka_producer.start()
 
-        logger.info("Application startup completed successfully")
-
-        yield
+        logger.info(FastConf.STARTUP_COMPLETED)
 
     except Exception:
-        logger.exception("Application startup failed")
+        logger.exception(FastConf.STARTUP_FAILED)
         raise
 
-    finally:
-        # ------------------ SHUTDOWN ------------------
-        logger.info("Shutting down application...")
+    # Application runs here
+    yield
+
+    # ------------------ SHUTDOWN ------------------
+    logger.info(FastConf.SHUTDOWN_STARTED)
+
+    try:
+        await kafka_producer.stop()
+        logger.info(FastConf.KAFKA_PRODUCER_STOPPED)
+    except Exception:
+        logger.exception(FastConf.KAFKA_PRODUCER_STOP_FAILED)
+
+    try:
+        await db_manager.close_connection()
+        logger.info(FastConf.DATABASE_CONNECTION_CLOSED)
+    except Exception:
+        logger.exception(FastConf.DATABASE_CONNECTION_CLOSE_FAILED)
+
+    logger.info(FastConf.SHUTDOWN_COMPLETED)
 
 
 app = FastAPI(
@@ -52,5 +68,11 @@ app = FastAPI(
 app.include_router(files_router)
 app.include_router(streams_controller)
 
+
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host=settings.IP, port=settings.PORT, reload=True)
+    uvicorn.run(
+        FastConf.APP_MODULE,
+        host=settings.IP,
+        port=settings.PORT,
+        reload=False,
+    )

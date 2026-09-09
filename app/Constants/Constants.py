@@ -16,6 +16,20 @@ class FastConf:
     APP_URL = "/api/{0}/ts"
     APP_TAG = "Telemetry Stream"
 
+    STARTUP_COMPLETED = "Application startup completed successfully"
+    STARTUP_FAILED = "Application startup failed"
+
+    SHUTDOWN_STARTED = "Shutting down application..."
+    SHUTDOWN_COMPLETED = "Application shutdown completed"
+
+    KAFKA_PRODUCER_STOPPED = "Kafka producer stopped"
+    KAFKA_PRODUCER_STOP_FAILED = "Failed to stop Kafka producer"
+
+    DATABASE_CONNECTION_CLOSED = "Database connection closed"
+    DATABASE_CONNECTION_CLOSE_FAILED = "Failed to close database connection"
+
+    APP_MODULE = "app.main:app"
+
 class KafkaConst:
     MAX_PARTITIONS = 10
     NEW_DRONE_PARAM ="server_drone_id"
