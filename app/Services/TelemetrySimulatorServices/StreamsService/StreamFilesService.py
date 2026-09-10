@@ -50,21 +50,23 @@ class StreamFilesService(IStreamFilesService):
 
         try:
             async with aiofiles.open(file_path, mode="r", encoding="utf-8") as f:
-                async for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
+                while True:
+                    async for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
 
-                    frame_data = json.loads(line)
-                    drone_id = frame_data.get(StreamMessages.DRONE_ID_KEY, file_name)
+                        frame_data = json.loads(line)
+                        drone_id = frame_data.get(StreamMessages.DRONE_ID_KEY, file_name)
 
-                    message = KafkaMessageDTO(
-                        topic=topic,
-                        value=frame_data,
-                        key=drone_id,
-                        partition=partition,
-                    )
-                    await self._producer.send_message(message)
+                        message = KafkaMessageDTO(
+                            topic=topic,
+                            value=frame_data,
+                            key=drone_id,
+                            partition=partition,
+                        )
+                        await self._producer.send_message(message)
+                    await f.seek(0)  # Reset file pointer to the beginning for continuous streaming
 
             logger.info(StreamMessages.STREAM_COMPLETED.format(file_name))
         except asyncio.CancelledError:
