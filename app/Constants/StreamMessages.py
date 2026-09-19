@@ -11,6 +11,7 @@ class StreamMessages:
     ALL_PARTITIONS_USED = "All 10 partitions are currently busy with active streams."
     DRONE_ID_KEY = "server_drone_id"
     PTS_KEY = "PrecisionTimeStamp"
+    CURRENT_PTS_KEY = "CurrentPrecisionTimeStamp"
     SENDING_IN_LOOP = 'Reached EOF for {0}. Looping back to start.'
     ERROR_STREAMING = "Error while streaming file: "
     FAILD_TO_START = "Failed to start stream for file '{0}': {1}"

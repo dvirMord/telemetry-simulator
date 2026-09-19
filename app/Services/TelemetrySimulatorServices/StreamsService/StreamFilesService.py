@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 from pathlib import Path
@@ -75,7 +75,8 @@ class StreamFilesService(IStreamFilesService):
                         
                         if pts is not None:
                             previous_time = pts
-
+                        # chaning the UTC to current utc
+                        frame_data[StreamMessages.CURRENT_PTS_KEY] = datetime.now(timezone.utc).isoformat()
                         message = KafkaMessageDTO(
                             topic=topic,
                             value=frame_data,
